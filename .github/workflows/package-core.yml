@@ -1,0 +1,59 @@
+name: Package Remaining Core Images
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+
+    steps:
+      - name: Download and package core images
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          images=(
+            oaisoftwarealliance/oai-upf:v2.2.1
+            oaisoftwarealliance/oai-udm:v2.2.1
+            oaisoftwarealliance/oai-nrf:v2.2.1
+            oaisoftwarealliance/oai-ausf:v2.2.1
+            oaisoftwarealliance/ims:latest
+            oaisoftwarealliance/oai-udr:v2.2.1
+            oaisoftwarealliance/trf-gen-cn5g:latest
+            oaisoftwarealliance/oai-smf:v2.2.1
+            mysql:9.6
+          )
+
+          for image in "${images[@]}"; do
+            echo "Downloading $image"
+            docker pull --platform linux/amd64 "$image"
+          done
+
+          printf '%s\n' "${images[@]}" > images.txt
+          docker image inspect "${images[@]}" > core-image-info.json
+
+          docker save "${images[@]}" |
+            gzip -1 > oai-core-remaining-amd64.tar.gz
+
+          sha256sum oai-core-remaining-amd64.tar.gz \
+            > oai-core-remaining-amd64.tar.gz.sha256
+
+          ls -lh oai-core-remaining-amd64.tar.gz
+
+      - name: Upload core image package
+        uses: actions/upload-artifact@v4
+        with:
+          name: oai-core-remaining-amd64
+          path: |
+            oai-core-remaining-amd64.tar.gz
+            oai-core-remaining-amd64.tar.gz.sha256
+            core-image-info.json
+            images.txt
+          retention-days: 1
+          compression-level: 0
+          if-no-files-found: error
