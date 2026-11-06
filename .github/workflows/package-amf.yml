@@ -1,0 +1,44 @@
+name: Package OAI AMF
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Download and package AMF image
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          IMAGE=oaisoftwarealliance/oai-amf:v2.2.1
+
+          docker pull --platform linux/amd64 "$IMAGE"
+
+          docker image inspect "$IMAGE" > image-info.json
+
+          docker save "$IMAGE" |
+            gzip -1 > oai-amf-v2.2.1-amd64.tar.gz
+
+          sha256sum oai-amf-v2.2.1-amd64.tar.gz \
+            > oai-amf-v2.2.1-amd64.tar.gz.sha256
+
+          ls -lh oai-amf-v2.2.1-amd64.tar.gz
+
+      - name: Upload image package
+        uses: actions/upload-artifact@v4
+        with:
+          name: oai-amf-v2.2.1-amd64
+          path: |
+            oai-amf-v2.2.1-amd64.tar.gz
+            oai-amf-v2.2.1-amd64.tar.gz.sha256
+            image-info.json
+          retention-days: 1
+          compression-level: 0
+          if-no-files-found: error
